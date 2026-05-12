@@ -1,0 +1,69 @@
+services:
+  postgres-db:
+    image: postgres:15
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: datahive_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - datahive-network
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - datahive-network
+    restart: always
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres-db
+    networks:
+      - datahive-network
+    restart: always
+
+  event-service:
+    build: ./event-service
+    container_name: event-service
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres-db
+      - rabbitmq
+    networks:
+      - datahive-network
+    restart: always
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    depends_on:
+      - rabbitmq
+    networks:
+      - datahive-network
+    volumes:
+      - ./notification-service/logs:/usr/src/app/logs
+    restart: always
+
+networks:
+  datahive-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
